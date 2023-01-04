@@ -6,8 +6,8 @@ name = "pypi"
 [packages]
 flask = "*"
 flask-sqlalchemy = "*"
-jwt = "*"
 mysqlclient = "*"
+pyjwt = "*"
 
 [dev-packages]
 
