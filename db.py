@@ -5,7 +5,7 @@ from models.models import db, User
 from  werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 import json
-import datetime
+from datetime import date, datetime
 import jwt
 from datetime import datetime, timedelta
 from functools import wraps
@@ -54,8 +54,13 @@ def user_insert():
     password = data.get('password')       
     user_name , email = data.get('user_name') , data.get('email')
     first_name , last_name = data.get('first_name') , data.get('last_name')
-    dob = data.get('dob')
     user_type = data.get('user_type')
+    dob = data.get('dob')
+
+    birthdate = datetime.strptime(dob , "%Y-%m-%d")
+    today = date.today()
+    age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+    print(age)
     
     user = User.query.filter_by(user_name = user_name).first() or  User.query.filter_by(email = email).first()
     if user:
@@ -64,7 +69,7 @@ def user_insert():
     
     password= generate_password_hash(data["password"])
     public_id = str(uuid.uuid4())
-    record = User(public_id,first_name,last_name,user_name,email,dob,user_type,password)
+    record = User(public_id,first_name,last_name,user_name,email,dob,age,user_type,password)
     db.session.add(record)
     db.session.commit()
     return jsonify({"status" : "Successfully Created"})

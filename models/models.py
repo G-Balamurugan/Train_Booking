@@ -11,18 +11,20 @@ class User(db.Model):
     last_name = db.Column(db.String(100))
     public_id = db.Column(db.String(256))
     user_name = db.Column(db.String(100))
-    dob = db.Column(db.DateTime)
+    dob = db.Column(db.String(100))
     email = db.Column(db.String(100))
+    age = db.Column(db.Integer)
     password = db.Column(db.String(256))
     user_type = db.Column(db.String(20))
 
-    def __init__(self,public_id , first_name, last_name, user_name, email, dob, user_type, password):
+    def __init__(self,public_id , first_name, last_name, user_name, email, dob, age, user_type, password):
         self.public_id = public_id 
         self.first_name = first_name
         self.last_name = last_name
         self.user_name = user_name
         self.email = email
         self.dob = dob
+        self.age = age
         self.user_type = user_type
         self.password = password
     
