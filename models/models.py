@@ -44,5 +44,41 @@ class Passenger(db.Model):
         self.email = email
         self.booking_status = booking_status
 
-        
-     
+class Train(db.Model):
+    
+    __tablename__ = "train"
+    
+    id = db.Column(db.Integer, primary_key = True) 
+    train_name = db.Column(db.String(40))
+    start_time = db.Column(db.String(40))
+    end_time = db.Column(db.String(40))
+    duration = db.Column(db.String)
+    train_from = db.Column(db.String(30))
+    train_to = db.Column(db.String(30))
+    start_date = db.Column(db.String(30))
+    end_date = db.Column(db.String(30))
+    total_tickets = db.Column(db.Integer)
+
+    def __init__(self, train_name, start_time, end_time, duration, train_from, train_to, date, no_of_tickets):
+        self.train_from = train_from
+        self.start_time = start_time
+        self.end_time = end_time
+        self.duration = duration
+        self.train_name = train_name
+        self.train_to = train_to
+        self.start_date = start_date
+        self.end_date = end_date
+        self.total_tickets = total_tickets 
+
+class Type_Class(db.Model):
+    id = db.Column(db.Integer, primary_key = True) 
+    train_name = db.Column(db.String(40))
+    train_class = db.Column(db.String(100))
+    train_type = db.Column(db.String(100))
+    no_of_tickets = db.Column(db.Integer)
+    
+    def __init__(self, train_name, train_class, train_type, no_of_tickets):
+        self.train_name = train_name
+        self.train_class = train_class
+        self.train_type = train_type
+        self.no_of_tickets = no_of_tickets
