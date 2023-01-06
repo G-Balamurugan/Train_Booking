@@ -28,21 +28,24 @@ class User(db.Model):
         self.user_type = user_type
         self.password = password
     
-class Passenger(db.Model):
+class Ticket(db.Model):
     
-    __tablename__ = "passenger"
+    __tablename__ = "ticket"
     
-    id = db.Column(db.Integer, primary_key = True)
-    public_id = db.Column(db.String(256))
+    pnr = db.Column(db.Integer, primary_key = True)
     user_name = db.Column(db.String(100))
-    email = db.Column(db.String(100))
-    booking_status = db.Column(db.String(100))
+    train_id = db.Column(db.Integer , db.ForeignKey("train.id"))
+    no_of_ticket_booked = db.Column(db.Integer)
+    price = db.Column(db.Integer)
+    ticket_status = db.Column(db.String(50))
     
-    def __init__(self, id, user_name, email, booking_status):
-        self.id = id
+    def __init__(self, pnr, user_name, train_id, no_of_ticket_booked, price, ticket_status):
+        self.pnr = pnr
         self.user_name = user_name
-        self.email = email
-        self.booking_status = booking_status
+        self.train_id = train_id
+        self.no_of_ticket_booked = no_of_ticket_booked
+        self.price = price
+        self.ticket_status = ticket_status
 
 class Train(db.Model):
     
