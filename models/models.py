@@ -16,8 +16,9 @@ class User(db.Model):
     age = db.Column(db.Integer)
     password = db.Column(db.String(256))
     user_type = db.Column(db.String(20))
+    validity = db.Column(db.Integer)
 
-    def __init__(self,public_id , first_name, last_name, user_name, email, dob, age, user_type, password):
+    def __init__(self,public_id , first_name, last_name, user_name, email, dob, age, user_type, password, validity):
         self.public_id = public_id 
         self.first_name = first_name
         self.last_name = last_name
@@ -27,6 +28,7 @@ class User(db.Model):
         self.age = age
         self.user_type = user_type
         self.password = password
+        self.validity = validity
     
 class Ticket(db.Model):
     

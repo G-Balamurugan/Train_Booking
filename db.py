@@ -41,21 +41,24 @@ def token_required(f):
         if not token:
             return make_response(
             jsonify({'message' : 'Token is missing !!'}),
-            401
-            ) 
+            401) 
         print(token)
         token = str.replace(str(token), "Bearer ", "")
         try:
             #token = jsondecoder.decode(token)
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
+            print(data)
             current_user = User.query.filter_by(public_id = data['public_id']).first()
+            if current_user.validity == 0:
+                return make_response(
+                jsonify({'message' : 'User Logged Out..Need to Login'}),
+                401)
             print(current_user)
         except Exception as e:
             print(".....!!!!!.... ", e)
             return make_response(
             jsonify({'message' : 'Token is invalid !!'}),
-            401
-            )
+            401)
         print(token)
         return  f(current_user, *args, **kwargs)
     return decorated
@@ -97,7 +100,7 @@ def user_insert():
     
     password= generate_password_hash(data["password"])
     public_id = str(uuid.uuid4())
-    record = User(public_id,first_name,last_name,user_name,email,dob,age,user_type,password)
+    record = User(public_id,first_name,last_name,user_name,email,dob,age,user_type,password,0)
     db.session.add(record)
     db.session.commit()
     return make_response(
@@ -132,7 +135,8 @@ def login():
             'public_id': user.public_id,
             'exp' : datetime.utcnow() + timedelta(minutes = 3000)
             }, app.config['SECRET_KEY'],"HS256")
-    
+        setattr(user, "validity", 1)
+        db.session.commit()
         return make_response(
             jsonify({"status" : "Success", "token" : jwt_token}),
             200)
@@ -146,16 +150,8 @@ def login():
 @app.route("/user/home", methods = ['POST','GET'])
 @token_required
 def home(current_user):
-    
-    # k = request.data
-    # print(k)
-    
     data = request.get_json()
-    
-    # print(data)
-    
-    # return {'message' : 'asif'}
-    temp = {}
+    temp = {} 
     output = []
     
     if not Validate.json(data, ["trainfrom","trainto","class","type","date","trainavailable"]):
@@ -192,6 +188,7 @@ def home(current_user):
         return make_response(
             jsonify({"status" : "Train Details Missing"}),
             401)   
+    print(output)
     return output
 
 # Ticket
@@ -227,10 +224,10 @@ def ticket(current_user):
             jsonify({"status" : "Foreign Key Constraint(Train ID)"}),
             401)
     
-    user_ticket = Ticket.query.filter_by(user_name = current_user.user_name).all()
-    if user_ticket:
-        for i in user_ticket:
-            user_ticket_count = user_ticket_count + i.no_of_ticket_booked  
+    # user_ticket = Ticket.query.filter_by(user_name = current_user.user_name).all()
+    # if user_ticket:
+    #     for i in user_ticket:
+    #         user_ticket_count = user_ticket_count + i.no_of_ticket_booked  
     if user_ticket_count > 6:
         return make_response(
             jsonify({"status" : "User can register only 6 tickets maximum"}),
@@ -248,13 +245,17 @@ def ticket(current_user):
     
 @app.route("/pnr", methods = ['POST','GET'])
 @token_required
-def pnr(user):
+def pnr(current_user):
     data = request.get_json()
     
     if not Validate.json(data, ["pnr"]):
         return make_response(
             jsonify({"status" : "PNR Number Missing"}),
-            401)
+            404)
+    if not Validate.isPresent(db, Ticket, "pnr" ,data["pnr"]):
+        return make_response(
+            jsonify({"status" : "PNR Not Found"}),
+            404)
     
     temp = Ticket.query.filter_by(pnr = data["pnr"]).first()
     output = {}
@@ -270,3 +271,12 @@ def pnr(user):
     output["date"] = user.start_date  
     
     return output
+
+@app.route("/logout" , methods=['POST','GET'])
+@token_required
+def logout(current_user):
+    setattr(current_user, "validity", 0)
+    db.session.commit()
+    return make_response(
+        jsonify({'message' : 'Logged Out'}),
+        200)
