@@ -30,24 +30,6 @@ class User(db.Model):
         self.password = password
         self.validity = validity
     
-class Ticket(db.Model):
-    
-    __tablename__ = "ticket"
-    
-    pnr = db.Column(db.Integer, primary_key = True)
-    user_name = db.Column(db.String(100))
-    train_id = db.Column(db.Integer , db.ForeignKey("train.id"))
-    no_of_ticket_booked = db.Column(db.Integer)
-    price = db.Column(db.Integer)
-    ticket_status = db.Column(db.String(50))
-    
-    def __init__(self, pnr, user_name, train_id, no_of_ticket_booked, price, ticket_status):
-        self.pnr = pnr
-        self.user_name = user_name
-        self.train_id = train_id
-        self.no_of_ticket_booked = no_of_ticket_booked
-        self.price = price
-        self.ticket_status = ticket_status
 
 class Train(db.Model):
     
@@ -60,11 +42,13 @@ class Train(db.Model):
     duration = db.Column(db.String(20))
     train_from = db.Column(db.String(30))
     train_to = db.Column(db.String(30))
+    no_of_compartment = db.Column(db.Integer)
+    no_of_tickets_compartment = db.Column(db.Integer)
     start_date = db.Column(db.String(30))
     end_date = db.Column(db.String(30))
     total_tickets = db.Column(db.Integer)
 
-    def __init__(self, train_name, start_time, end_time, duration, train_from, train_to, start_date, end_date, no_of_tickets):
+    def __init__(self, train_name, start_time, end_time, duration, train_from, train_to, start_date, end_date, no_of_compartment, no_of_tickets_compartment, total_tickets):
         self.train_from = train_from
         self.start_time = start_time
         self.end_time = end_time
@@ -73,8 +57,10 @@ class Train(db.Model):
         self.train_to = train_to
         self.start_date = start_date
         self.end_date = end_date
+        self.no_of_compartment = no_of_compartment
+        self.no_of_tickets_compartment = no_of_tickets_compartment
         self.total_tickets = total_tickets 
-
+        
 class Type_Class(db.Model):
     
     __tablename__ = "type_class"
@@ -82,12 +68,14 @@ class Type_Class(db.Model):
     id = db.Column(db.Integer, primary_key = True) 
     train_name = db.Column(db.String(40))
     train_class = db.Column(db.String(100))
+    no_of_compartment = db.Column(db.Integer)
     no_of_tickets = db.Column(db.Integer)
     price = db.Column(db.Integer)
     
-    def __init__(self, train_name, train_class, no_of_tickets, price):
+    def __init__(self, train_name, train_class, no_of_compartment, no_of_tickets, price):
         self.train_name = train_name
         self.train_class = train_class
+        self.no_of_compartment = no_of_compartment
         self.no_of_tickets = no_of_tickets
         self.price = price
         
@@ -110,3 +98,57 @@ class Home(db.Model):
         self.train_type = train_type
         self.train_date = train_date
         self.train_available = train_available
+
+class Ticket_Booking(db.Model):
+    
+    __tablename__ = "ticket_booking"
+    
+    id = db.Column(db.Integer, primary_key = True)
+    train_id = db.Column(db.Integer, db.ForeignKey("train.id"))
+    train_name = db.Column(db.String(30))
+    train_class = db.Column(db.String(30))
+    ticket_type = db.Column(db.String(30))
+    no_of_tickets_required = db.Column(db.Integer) 
+    
+    def __init__(self, train_id, train_name, train_class, ticket_type, no_of_tickets_required):
+        self.train_id = train_id
+        self.train_name = train_name
+        self.train_class = train_class
+        self.ticket_type = ticket_type
+        self.no_of_tickets_required = no_of_tickets_required
+        
+class Seat_Remaining(db.Model):
+    
+    __tablename__ = "seat_remaining"
+    
+    id = db.Column(db.Integer, primary_key = True)
+    train_id = db.Column(db.Integer , db.ForeignKey("train.id"))
+    train_class = db.Column(db.String(30))
+    total_class_seat = db.Column(db.Integer)
+    seat_start_no = db.Column(db.Integer)
+    
+    def __init__(self, train_id,train_class,total_class_seat,seat_start_no):
+        self.train_id = train_id
+        self.train_class = train_class
+        self.total_class_seat = total_class_seat
+        self.seat_start_no = seat_start_no
+
+class Ticket(db.Model):
+    
+    __tablename__ = "ticket"
+    
+    id = db.Column(db.Integer, primary_key = True)
+    pnr = db.Column(db.Integer)
+    user_name = db.Column(db.String(100))
+    train_id = db.Column(db.Integer , db.ForeignKey("train.id"))
+    seat_no = db.Column(db.Integer)
+    price = db.Column(db.Integer)
+    ticket_status = db.Column(db.String(50))
+    
+    def __init__(self, pnr, user_name, train_id, seat_no, price, ticket_status):
+        self.pnr = pnr
+        self.user_name = user_name
+        self.train_id = train_id
+        self.seat_no = seat_no
+        self.price = price
+        self.ticket_status = ticket_status
