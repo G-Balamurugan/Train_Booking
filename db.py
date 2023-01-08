@@ -372,9 +372,9 @@ def ticket_booking(current_user):
         current_seat_no = current_seat_no + 1
         if ticket_type == "general":
             price = base_price
-        elif ticket_type == "":
+        elif ticket_type == "tatkal":
             price = (base_price * 1.25)
-        elif ticket_type == "":
+        elif ticket_type == "premium tatkal":
             price = (base_price * 1.5)
         elif ticket_type == "":
             price = (base_price * 1.75)
