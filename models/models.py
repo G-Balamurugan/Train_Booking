@@ -69,14 +69,12 @@ class Type_Class(db.Model):
     train_name = db.Column(db.String(40))
     train_class = db.Column(db.String(100))
     no_of_compartment = db.Column(db.Integer)
-    no_of_tickets = db.Column(db.Integer)
     price = db.Column(db.Integer)
     
-    def __init__(self, train_name, train_class, no_of_compartment, no_of_tickets, price):
+    def __init__(self, train_name, train_class, no_of_compartment, price):
         self.train_name = train_name
         self.train_class = train_class
         self.no_of_compartment = no_of_compartment
-        self.no_of_tickets = no_of_tickets
         self.price = price
         
 class Home(db.Model):

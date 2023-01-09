@@ -202,7 +202,7 @@ def type_class_insert(current_user):
     
     data = request.form
     
-    if not data or not data.get('trainname') or not data.get('trainclass') or not data.get('noofcompartment') or not data.get('noofticket') or not data.get('price'):
+    if not data or not data.get('trainname') or not data.get('trainclass') or not data.get('noofcompartment') or not data.get('price'):
         return make_response(
             jsonify({"status" : "Feilds missing.."}),
             401)
@@ -211,12 +211,22 @@ def type_class_insert(current_user):
             jsonify({"status" : "Train Not Found.."}),
             401)
     else:
-        class_chk = Type_Class.query.filter_by(train_name = data.get('trainname')).first() and Type_Class.query.filter_by(train_class = data.get('trainclass')).first()
+        class_chk = Type_Class.query.filter_by(train_name = data.get('trainname')).filter_by(train_class = data.get('trainclass')).first()
         if class_chk:
             return make_response(
                 jsonify({"status" : "Entry Already Exists.."}),
                 401)
-    record = Type_Class(data.get('trainname'),data.get('trainclass'),data.get('noofcompartmen'),data.get('noofticket'),data.get('price'))
+        else:
+            compartment_chk = Type_Class.query.filter_by(train_name = data.get('trainname')).all()
+            total_compartment = 0
+            if compartment_chk:
+                for i in compartment_chk:
+                    total_compartment = total_compartment + i.no_of_compartment
+                train_chk = Train.query.filter_by(train_name = data.get('trainname')).first()
+                if total_compartment + int(data.get('noofcompartment')) > train_chk.no_of_compartment:
+                    return make_response(jsonify({"status" : "Train Compartment Full...Can't Allocate"}),401)
+    
+    record = Type_Class(data.get('trainname'),data.get('trainclass'),data.get('noofcompartment'),data.get('price'))
     db.session.add(record)
     db.session.commit()
     
@@ -230,7 +240,7 @@ def seat_remaining_insert(current_user):
     
     data = request.form
     
-    if not data or not data.get('trainid') or not data.get('trainclass') or not data.get('totalclassseat') or not data.get('startseat'):
+    if not data or not data.get('trainid') or not data.get('trainclass') or not data.get('startseat'):
         return make_response(
             jsonify({"status" : "Feilds Missing."}),
             401)
@@ -241,18 +251,20 @@ def seat_remaining_insert(current_user):
             jsonify({"status" : "Train Not Found.."}),
             401)
     
-    class_chk = Type_Class.query.filter_by(train_class=data.get('trainclass')).first()
+    class_chk = Type_Class.query.filter_by(train_class=data.get('trainclass')).filter_by(train_name=train_chk.train_name).first()
     if not class_chk:
         return make_response(
             jsonify({"status" : "Details Did Not Match..."}),
             401)
     
-    seat_chk = Seat_Remaining.query.filter_by(train_id = data.get('trainid')).first() and Seat_Remaining.query.filter_by(train_class = data.get('trainclass')).first()
+    total_class_seat = train_chk.no_of_tickets_compartment * class_chk.no_of_compartment
+    
+    seat_chk = Seat_Remaining.query.filter_by(train_id = data.get('trainid')).filter_by(train_class = data.get('trainclass')).first()
     if seat_chk:
         return make_response(
             jsonify({"status" : "Entry Already Exists..!"}),
             401)    
-    record = Seat_Remaining(data.get('trainid'),data.get('trainclass'),data.get('totalclassseat'),data.get('startseat'))
+    record = Seat_Remaining(data.get('trainid'),data.get('trainclass'),total_class_seat,data.get('startseat'))
     db.session.add(record)
     db.session.commit()
     
@@ -278,34 +290,60 @@ def home(current_user):
     db.session.add(record)
     db.session.commit()
     
+    if not Validate.isPresent(db,Type_Class,"train_class",data["class"]) and data["class"]!="all class":
+        return make_response(jsonify({"status" : "Class Not Found.."}),401)
+    
     if Validate.isPresent(db, Train, "train_from", data["trainfrom"]) and\
         Validate.isPresent(db, Train, "train_to", data["trainto"]):
-        
-        train_check = db.session.query(Train.start_time, Train.total_tickets,Train.start_date, Train.train_name, Train.train_from, Train.train_to, Type_Class.train_class,Type_Class.no_of_tickets).join(Type_Class,Train.train_name == Type_Class.train_name).all()
-        print(train_check,type(train_check),type(train_check[0]))
-        
-        for i in train_check:
-            if i.train_from == data["trainfrom"] and i.train_to == data["trainto"] and\
-                i.train_class == data["class"] and i.start_date ==  data["date"]:
-                    if (data["trainavailable"] == "yes" and i.no_of_tickets > 0) or data["trainavailable"] == "no": 
-                        temp = {}
-                        temp["trainname"] =i.train_name
-                        temp["time"] = i.start_time
-                        temp["date"] = i.start_date
-                        temp["no_of_tickets"] = i.total_tickets
-                        temp["trainfrom"] = i.train_from
-                        temp["trainto"] = i.train_to
-                        temp["class"] = i.train_class  
-                        output.append(temp)
-                        print(output)
-        print(output)
-    else:
-        return make_response(
-            jsonify({"status" : "Train Details Missing"}),
-            401)   
-    print(output)
-    return output
 
+        train_extract = Train.query.filter_by(train_from = data["trainfrom"]).all() and Train.query.filter_by(train_to = data["trainto"]).all() and Train.query.filter_by(start_date = data["date"]).all()
+        
+        train_list=[]
+        
+        for i in train_extract:
+            print("///////////",i.train_name)
+            train_class_list = []    
+            if data["class"] == "all class":
+                all_class_extract = Type_Class.query.filter_by(train_name=i.train_name).all()
+                for j in all_class_extract:
+                    train_class_list.append(j.train_class)
+            else:
+                class_chk = Type_Class.query.filter_by(train_name=i.train_name).filter_by(train_class=data["class"]).first()
+                if class_chk:
+                    train_class_list.append(data["class"])
+            print(train_class_list)
+            seat_dict = {}
+            for j in train_class_list:
+                seat_available_chk = Seat_Remaining.query.filter_by(train_id=i.id).filter_by(train_class=j).first()
+                if seat_available_chk:
+                    seat_dict[j] = seat_available_chk.total_class_seat - seat_available_chk.seat_start_no
+                else:
+                    continue  
+                print("!... ",seat_dict)
+            temp={}
+            if seat_dict:
+                temp[i.id]=seat_dict
+            
+            if temp and temp not in train_list:
+                train_list.append(temp) 
+        print("....! ",train_list)
+        
+        final_list = []
+        for i in train_list:
+            for l in i.keys():
+                print(l)
+                temp = {}
+                train_query = Train.query.filter_by(id=l).first()
+                temp["trainname"] =train_query.train_name
+                temp["time"] = train_query.start_time
+                temp["date"] = train_query.start_date
+                temp["no_of_tickets"] = train_query.total_tickets
+                temp["trainfrom"] = train_query.train_from
+                temp["trainto"] = train_query.train_to
+                temp["train_class"] = i[l]
+                final_list.append(temp)
+        return final_list
+        
 
 #   Booking
 
@@ -326,6 +364,8 @@ def ticket_booking(current_user):
     no_of_tickets_required = data.get('noofticketrequired')
     
     user = Train.query.filter_by(train_name=train_name).first()
+    print(user.id)
+
     if not user or user.train_name != train_name:
         return make_response(
             jsonify({"status" : "Train Not Found.."}),
@@ -343,8 +383,8 @@ def ticket_booking(current_user):
             jsonify({"status" : "User Can Book Only in the Range 1 to 6 Tickets.."}),
             401)
     
-    user_seat = Seat_Remaining.query.filter_by(train_id=train_id).first() and Seat_Remaining.query.filter_by(train_class=train_class).first()
-    print()
+    user_seat = Seat_Remaining.query.filter_by(train_id=data.get('trainid')).filter_by(train_class=train_class).first()
+    print(user_seat.train_id, user_seat.train_class)
     if not user_seat:
         return make_response(
             jsonify({"status" : "Train Details Did Not Match"})
@@ -392,7 +432,6 @@ def ticket_booking(current_user):
     return make_response(
         jsonify({"status" : "Successfully Inserted"}),
         200)
-    
     
 #   PNR CHECK
 
