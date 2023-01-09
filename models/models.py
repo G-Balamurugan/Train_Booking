@@ -140,13 +140,33 @@ class Ticket(db.Model):
     user_name = db.Column(db.String(100))
     train_id = db.Column(db.Integer , db.ForeignKey("train.id"))
     seat_no = db.Column(db.Integer)
+    train_class = db.Column(db.String(30))
+    ticket_type = db.Column(db.String(30))
     price = db.Column(db.Integer)
     ticket_status = db.Column(db.String(50))
     
-    def __init__(self, pnr, user_name, train_id, seat_no, price, ticket_status):
+    def __init__(self, pnr, user_name, train_id, seat_no, train_class, ticket_type, price, ticket_status):
         self.pnr = pnr
         self.user_name = user_name
         self.train_id = train_id
         self.seat_no = seat_no
+        self.train_class = train_class
+        self.ticket_type = ticket_type
         self.price = price
         self.ticket_status = ticket_status
+        
+class Cancel_Ticket(db.Model):
+    
+    __tablename__ = "cancel_ticket"
+    
+    id = db.Column(db.Integer, primary_key = True)
+    user_name = db.Column(db.String(100))
+    train_id = db.Column(db.Integer , db.ForeignKey("train.id"))
+    seat_no = db.Column(db.Integer)
+    train_class = db.Column(db.String(30))
+    
+    def __init__(self, user_name,train_id,seat_no,train_class):
+        self.user_name = user_name
+        self.train_id = train_id
+        self.seat_no = seat_no
+        self.train_class = train_class

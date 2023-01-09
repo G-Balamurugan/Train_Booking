@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, render_template ,make_response
 from urllib.parse import quote_plus
 from flask_sqlalchemy import SQLAlchemy
-from models.models import db, User, Train , Home , Type_Class ,Ticket, Seat_Remaining ,Ticket_Booking
+from models.models import db, User, Train , Home , Type_Class ,Ticket, Seat_Remaining ,Ticket_Booking ,Cancel_Ticket
 from  werkzeug.security import generate_password_hash, check_password_hash
 from Validate import Validate
 from Duration import Duration
@@ -412,14 +412,14 @@ def ticket_booking(current_user):
         current_seat_no = current_seat_no + 1
         if ticket_type == "general":
             price = base_price
-        elif ticket_type == "tatkal":
+        elif ticket_type == "ladies":
             price = (base_price * 1.25)
-        elif ticket_type == "premium tatkal":
+        elif ticket_type == "tatkal":
             price = (base_price * 1.5)
-        elif ticket_type == "":
+        elif ticket_type == "premium tatkal":
             price = (base_price * 1.75)
         
-        record = Ticket(pnr,current_user.user_name,train_id, current_seat_no,price,"Successfull")
+        record = Ticket(pnr,current_user.user_name,train_id, current_seat_no, train_class, ticket_type ,price,"Successfull")
         db.session.add(record)
         db.session.commit()
     
@@ -430,9 +430,30 @@ def ticket_booking(current_user):
     db.session.add(record)
     db.session.commit() 
     return make_response(
-        jsonify({"status" : "Successfully Inserted"}),
+        jsonify({"status" : "Ticket Booked Successfully"}),
         200)
     
+@app.route("/booking/cancel", methods=['POST','GET'])
+@token_required
+def booking_cancel(current_user):
+    data = request.form
+    
+    if not data or not data.get('trainid') or not data.get('seatno') or not data.get('class'):
+        return make_response(jsonify({"status" : "Train Details Missing..!"}),401)
+    
+    seat_cancel_chk = Ticket.query.filter_by(train_id=data.get('trainid')).filter_by(user_name=current_user.user_name).filter_by(seat_no=data.get('seatno')).first()
+    if not seat_cancel_chk:
+        return make_response(jsonify({"status" : "Wrong Entry..!"}),401)
+    
+    record = Cancel_Ticket(current_user.user_name,data.get('trainid'),data.get('seatno'),data.get('class'))
+    db.session.add(record)
+    db.session.commit()
+    
+    ticket_table_del = Ticket.query.filter_by(train_id=data.get('trainid')).filter_by(user_name=current_user.user_name).filter_by(seat_no=data.get('seatno')).delete()
+    db.session.commit()
+    
+    return make_response(jsonify({"status" : "Ticket Cancelled Successfully"}),200)
+
 #   PNR CHECK
 
 @app.route("/pnr", methods = ['POST','GET'])
