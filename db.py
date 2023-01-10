@@ -335,12 +335,15 @@ def home(current_user):
                 temp = {}
                 train_query = Train.query.filter_by(id=l).first()
                 temp["trainname"] =train_query.train_name
-                temp["time"] = train_query.start_time
-                temp["date"] = train_query.start_date
-                temp["no_of_tickets"] = train_query.total_tickets
+                temp["trainid"] = train_query.id
+                temp["duration"] = train.duration
+                temp["starttime"] = train_query.start_time
+                temp["startdate"] = train_query.start_date
+                #temp["no_of_tickets"] = train_query.total_tickets
                 temp["trainfrom"] = train_query.train_from
                 temp["trainto"] = train_query.train_to
-                temp["train_class"] = i[l]
+                temp["enddate"] = train_query.end_date
+                temp["endtime"] = train_query.end_time
                 final_list.append(temp)
         return final_list
         
@@ -387,26 +390,36 @@ def ticket_booking(current_user):
     print(user_seat.train_id, user_seat.train_class)
     if not user_seat:
         return make_response(
-            jsonify({"status" : "Train Details Did Not Match"})
-            )
-    if (user_seat.total_class_seat - user_seat.seat_start_no) < no_of_tickets_required:
-        return make_response(
-            jsonify({"status" : "Train Seats Not Available.."}),
-            401) 
+            jsonify({"status" : "Train Details Did Not Match"}),401)
     
+    ticket_pending = 0 
+    ticket_cancel_chk = Cancel_Ticket.query.filter_by(train_id=data.get('trainid')).filter_by(train_class=data.get('trainclass')).all()
+    flag_pending_ticket = 0 
+
+    for d in ticket_cancel_chk:
+        ticket_pending = ticket_pending + 1
+            
+    if (user_seat.total_class_seat - user_seat.seat_start_no) < no_of_tickets_required:
+        flag_pending_ticket = 1
+
+        if not ticket_cancel_chk or ticket_pending < no_of_tickets_required:
+            return make_response(
+                jsonify({"status" : "Train Seats Not Available.."}),
+                401) 
+
     user_check = User.query.filter_by(user_name = current_user.user_name).first()
     if not user_check:
         return make_response(
             jsonify({"status" : "User not found"}),
             401)
     
-    current_seat_no = user_seat.seat_start_no
-    
     pnr = random.randint((10**7)+1,10**8)
     pnr = int(str(pnr)+str(current_user.id))
 
     price_chk = Type_Class.query.filter_by(train_class = train_class).first() and Type_Class.query.filter_by(train_name = train_name).first() 
     base_price = price_chk.price 
+    
+    current_seat_no = user_seat.seat_start_no
     
     for i in range(no_of_tickets_required):
         current_seat_no = current_seat_no + 1
@@ -418,7 +431,7 @@ def ticket_booking(current_user):
             price = (base_price * 1.5)
         elif ticket_type == "premium tatkal":
             price = (base_price * 1.75)
-        
+            
         record = Ticket(pnr,current_user.user_name,train_id, current_seat_no, train_class, ticket_type ,price,"Successfull")
         db.session.add(record)
         db.session.commit()
