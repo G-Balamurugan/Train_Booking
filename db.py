@@ -336,9 +336,10 @@ def home(current_user):
                 train_query = Train.query.filter_by(id=l).first()
                 temp["trainname"] =train_query.train_name
                 temp["trainid"] = train_query.id
-                temp["duration"] = train.duration
+                #temp["duration"] = train.duration
                 temp["starttime"] = train_query.start_time
                 temp["startdate"] = train_query.start_date
+                temp["class"] = train_list
                 #temp["no_of_tickets"] = train_query.total_tickets
                 temp["trainfrom"] = train_query.train_from
                 temp["trainto"] = train_query.train_to
