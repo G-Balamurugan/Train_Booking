@@ -142,12 +142,16 @@ class Ticket(db.Model):
     seat_no = db.Column(db.Integer)
     train_class = db.Column(db.String(30))
     ticket_type = db.Column(db.String(30))
+    passenger_name = db.Column(db.String(30))
+    passenger_age = db.Column(db.String(30))
     price = db.Column(db.Integer)
     ticket_status = db.Column(db.String(50))
     
-    def __init__(self, pnr, user_name, train_id, seat_no, train_class, ticket_type, price, ticket_status):
+    def __init__(self, pnr, user_name, passenger_name, passenger_age,train_id, seat_no, train_class, ticket_type, price, ticket_status):
         self.pnr = pnr
         self.user_name = user_name
+        self.passenger_name = passenger_name
+        self.passenger_age = passenger_age
         self.train_id = train_id
         self.seat_no = seat_no
         self.train_class = train_class

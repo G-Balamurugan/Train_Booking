@@ -15,14 +15,15 @@ import random
 
 
 app = Flask(__name__)
+
 CORS(app)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:%s@localhost/booking' % quote_plus('bala')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
 app.config['SECRET_KEY'] = 'your secret key'
-
 jsondecoder = json.JSONDecoder()
 
 
@@ -36,19 +37,25 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
+        
         if 'Authorization' in request.headers:
             token = request.headers['Authorization']
+        
         if not token:
             return make_response(
             jsonify({'message' : 'Token is missing !!'}),
             401) 
+        
         print(token)
         token = str.replace(str(token), "Bearer ", "")
         try:
             #token = jsondecoder.decode(token)
+            
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
             print(data)
+            
             current_user = User.query.filter_by(public_id = data['public_id']).first()
+            
             if current_user.validity == 0:
                 return make_response(
                 jsonify({'message' : 'User Logged Out..Need to Login'}),
@@ -59,6 +66,7 @@ def token_required(f):
             return make_response(
             jsonify({'message' : 'Token is invalid !!'}),
             401)
+        
         print(token)
         return  f(current_user, *args, **kwargs)
     return decorated
@@ -91,7 +99,7 @@ def user_insert():
     age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
     print(age)
     
-    user = User.query.filter_by(user_name = user_name).first() or  User.query.filter_by(email = email).first()
+    user = User.query.filter_by(user_name=user_name).first() or  User.query.filter_by(email=email).first()
     if user:
         return make_response(
             jsonify({"status" : "User Already Exists"}),
@@ -135,8 +143,10 @@ def login():
             'public_id': user.public_id,
             'exp' : datetime.utcnow() + timedelta(minutes = 3000)
             }, app.config['SECRET_KEY'],"HS256")
+        
         setattr(user, "validity", 1)
         db.session.commit()
+        
         return make_response(
             jsonify({"status" : "Success", "token" : jwt_token}),
             200)
@@ -219,6 +229,7 @@ def type_class_insert(current_user):
         else:
             compartment_chk = Type_Class.query.filter_by(train_name = data.get('trainname')).all()
             total_compartment = 0
+        
             if compartment_chk:
                 for i in compartment_chk:
                     total_compartment = total_compartment + i.no_of_compartment
@@ -301,7 +312,8 @@ def home(current_user):
         train_list=[]
         
         for i in train_extract:
-            print("///////////",i.train_name)
+            
+            #print("///////////",i.train_name)
             train_class_list = []    
             if data["class"] == "all class":
                 all_class_extract = Type_Class.query.filter_by(train_name=i.train_name).all()
@@ -311,22 +323,33 @@ def home(current_user):
                 class_chk = Type_Class.query.filter_by(train_name=i.train_name).filter_by(train_class=data["class"]).first()
                 if class_chk:
                     train_class_list.append(data["class"])
+            
             print(train_class_list)
+            
             seat_dict = {}
             for j in train_class_list:
+                #print("#...!",j)
+                ticket_cancel_chk = Cancel_Ticket.query.filter_by(train_id=i.id).filter_by(train_class=j).all()
+                ticket_pending = 0
+                for d in ticket_cancel_chk:
+                    ticket_pending = ticket_pending + 1
                 seat_available_chk = Seat_Remaining.query.filter_by(train_id=i.id).filter_by(train_class=j).first()
                 if seat_available_chk:
-                    seat_dict[j] = seat_available_chk.total_class_seat - seat_available_chk.seat_start_no
+                    seat_total = (seat_available_chk.total_class_seat - seat_available_chk.seat_start_no) + ticket_pending
+                    if (data["trainavailable"]=="yes" and seat_total>0 ) or data["trainavailable"] == "no":
+                        #print("##...@",j,seat_total)
+                        seat_dict[j] = seat_total
                 else:
                     continue  
-                print("!... ",seat_dict)
+                #print("@@@@@.....",seat_dict) 
+        
             temp={}
             if seat_dict:
                 temp[i.id]=seat_dict
             
             if temp and temp not in train_list:
                 train_list.append(temp) 
-        print("....! ",train_list)
+        #print("....! ",train_list)
         
         final_list = []
         for i in train_list:
@@ -336,11 +359,10 @@ def home(current_user):
                 train_query = Train.query.filter_by(id=l).first()
                 temp["trainname"] =train_query.train_name
                 temp["trainid"] = train_query.id
-                #temp["duration"] = train.duration
+                temp["duration"] = train_query.duration
                 temp["starttime"] = train_query.start_time
                 temp["startdate"] = train_query.start_date
-                temp["class"] = train_list
-                #temp["no_of_tickets"] = train_query.total_tickets
+                temp["class"] = i[l]
                 temp["trainfrom"] = train_query.train_from
                 temp["trainto"] = train_query.train_to
                 temp["enddate"] = train_query.end_date
@@ -354,21 +376,26 @@ def home(current_user):
 @app.route("/ticket/booking", methods=['POST','GET'])
 @token_required
 def ticket_booking(current_user):
-    
+
     data = request.form
     
-    if not data or  not data.get('trainid') or not data.get('trainname') or not data.get('trainclass') or not data.get('tickettype') or not data.get('noofticketrequired'):
+    if not data or not data.get('passengername') or not data.get('passengerage') or not data.get('trainid') or not data.get('trainname') or not data.get('trainclass') or not data.get('tickettype') or not data.get('noofticketrequired'):
         return make_response(
-            jsonify({"status" : "Feilds missing."}),
+            jsonify({"status" : "Fields missing."}),
             401)
+        
     train_id = data.get('trainid')
     train_name = data.get('trainname')
+    passenger_name = (data.get('passengername')).split(",")
+    passenger_age = (data.get('passengerage')).split(",")
     train_class = data.get('trainclass')
     ticket_type = data.get('tickettype')
     no_of_tickets_required = data.get('noofticketrequired')
     
-    user = Train.query.filter_by(train_name=train_name).first()
-    print(user.id)
+    if len(passenger_name)!=int(no_of_tickets_required) or len(passenger_age)!=int(no_of_tickets_required):
+        return make_response(jsonify({"status" : "Passenger Details Missing..."}),404)
+    
+    user = Train.query.filter_by(train_name=train_name).filter_by(id=train_id).first()
 
     if not user or user.train_name != train_name:
         return make_response(
@@ -399,12 +426,12 @@ def ticket_booking(current_user):
 
     for d in ticket_cancel_chk:
         ticket_pending = ticket_pending + 1
-            
-    if (user_seat.total_class_seat - user_seat.seat_start_no) < no_of_tickets_required:
+    
+    seat_total = (user_seat.total_class_seat - user_seat.seat_start_no)+ ticket_pending
+    
+    if seat_total < no_of_tickets_required:
         flag_pending_ticket = 1
-
-        if not ticket_cancel_chk or ticket_pending < no_of_tickets_required:
-            return make_response(
+        return make_response(
                 jsonify({"status" : "Train Seats Not Available.."}),
                 401) 
 
@@ -421,9 +448,18 @@ def ticket_booking(current_user):
     base_price = price_chk.price 
     
     current_seat_no = user_seat.seat_start_no
+    flag_pending_ticket = 0
+    if current_seat_no == user_seat.total_class_seat:
+        flag_pending_ticket = 1
     
     for i in range(no_of_tickets_required):
-        current_seat_no = current_seat_no + 1
+        if flag_pending_ticket:    
+            ticket_cancel_book = Cancel_Ticket.query.filter_by(train_id=data.get('trainid')).filter_by(train_class=data.get('trainclass')).first()
+            current_seat_no = ticket_cancel_book.seat_no
+            db.session.delete(ticket_cancel_book)
+            db.session.commit()
+        else:    
+            current_seat_no = current_seat_no + 1
         if ticket_type == "general":
             price = base_price
         elif ticket_type == "ladies":
@@ -433,13 +469,15 @@ def ticket_booking(current_user):
         elif ticket_type == "premium tatkal":
             price = (base_price * 1.75)
             
-        record = Ticket(pnr,current_user.user_name,train_id, current_seat_no, train_class, ticket_type ,price,"Successfull")
+        record = Ticket(pnr,current_user.user_name,passenger_name[i],passenger_age[i],train_id, current_seat_no, train_class, ticket_type ,price,"Successfull")
         db.session.add(record)
         db.session.commit()
     
-    setattr(user_seat, "seat_start_no", current_seat_no)
-    db.session.commit()
-    
+    if not flag_pending_ticket:
+        setattr(user_seat, "seat_start_no", current_seat_no)
+        db.session.commit()
+    else:
+        current_seat_no = user_seat.total_class_seat
     record = Ticket_Booking(train_id,train_name,train_class,ticket_type,no_of_tickets_required)
     db.session.add(record)
     db.session.commit() 
@@ -455,7 +493,7 @@ def booking_cancel(current_user):
     if not data or not data.get('trainid') or not data.get('seatno') or not data.get('class'):
         return make_response(jsonify({"status" : "Train Details Missing..!"}),401)
     
-    seat_cancel_chk = Ticket.query.filter_by(train_id=data.get('trainid')).filter_by(user_name=current_user.user_name).filter_by(seat_no=data.get('seatno')).first()
+    seat_cancel_chk = Ticket.query.filter_by(train_id=data.get('trainid')).filter_by(user_name=current_user.user_name).filter_by(seat_no=data.get('seatno')).filter_by(train_class=data.get('class')).first()
     if not seat_cancel_chk:
         return make_response(jsonify({"status" : "Wrong Entry..!"}),401)
     
@@ -463,9 +501,8 @@ def booking_cancel(current_user):
     db.session.add(record)
     db.session.commit()
     
-    ticket_table_del = Ticket.query.filter_by(train_id=data.get('trainid')).filter_by(user_name=current_user.user_name).filter_by(seat_no=data.get('seatno')).delete()
+    ticket_table_del = Ticket.query.filter_by(train_id=data.get('trainid')).filter_by(user_name=current_user.user_name).filter_by(seat_no=data.get('seatno')).filter_by(train_class=data.get('class')).delete()
     db.session.commit()
-    
     return make_response(jsonify({"status" : "Ticket Cancelled Successfully"}),200)
 
 #   PNR CHECK
@@ -479,18 +516,48 @@ def pnr(current_user):
         return make_response(
             jsonify({"status" : "PNR Number Missing"}),
             404)
-    if not Validate.isPresent(db, Ticket, "pnr" ,data["pnr"]):
-        return make_response(
-            jsonify({"status" : "PNR Not Found"}),
-            404)
     
-    temp = Ticket.query.filter_by(pnr = data["pnr"]).first()
+    temp = Ticket.query.filter_by(pnr = data["pnr"]).all()
+    if not temp:
+        return make_response(jsonify({"status" : "PNR Number Not Found"}),404)
+    
     output = {}
-    output["pnr"] = temp.pnr
-    output["username"] = temp.user_name
-    output["ticketstatus"] = temp.ticket_status
+    seat = []
+    for i in temp:
+        seat_detail = {}
+        seat_detail["seatno"] = i.seat_no
+        seat_detail["status"] = i.ticket_status
+        seat_detail["passengername"] = i.passenger_name
+        seat_detail["passengerage"] = i.passenger_age
     
-    user = Train.query.filter_by(id = temp.train_id).first()
+        if i.train_class == "AC1 Tier" or i.train_class == "Seater":
+            if i.seat_no%6==0 or i.seat_no%6==1:
+                seat_detail["position"] = "window side"
+            else:
+                seat_detail["position"] = "no choice"  
+        
+        elif i.train_class == "AC2 Tier":
+            if i.seat_no%2==0:
+                seat_detail["position"] = "upper"
+            else:
+                seat_detail["position"] = "lower"
+        
+        elif i.train_class == "AC3 Tier":
+            if i.seat_no%3==0:
+                seat_detail["position"] = "upper"
+            elif i.seat_no%3==2:
+                seat_detail["position"] = "middle"
+            else:
+                seat_detail["position"] = "lower"
+        
+        seat.append(seat_detail)
+    
+    output["pnr"] = temp[0].pnr
+    output["username"] = temp[0].user_name
+    output["ticketstatus"] = temp[0].ticket_status
+    output["ticketclass"] = temp[0].train_class
+    output["seat"] = seat
+    user = Train.query.filter_by(id = temp[0].train_id).first()
     output["trainname"] = user.train_name
     output["trainfrom"] = user.train_from
     output["trainto"] = user.train_to
@@ -526,7 +593,7 @@ def editemail(current_user) :
     
     if not Validate.json(data,["email"]):
         return make_response(
-            jsonify({"status" : "Feids Missing..!"}),
+            jsonify({"status" : "Fields Missing..!"}),
             401)
     
     data = request.get_json()
