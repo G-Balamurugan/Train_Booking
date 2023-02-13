@@ -174,3 +174,27 @@ class Cancel_Ticket(db.Model):
         self.train_id = train_id
         self.seat_no = seat_no
         self.train_class = train_class
+        
+class Waiting_list(db.Model):
+    
+    __tablename__ = "waiting_list"
+    
+    id = db.Column(db.Integer, primary_key = True)
+    train_class = db.Column(db.String(30))
+    ticket_type = db.Column(db.String(30))
+    train_id = db.Column(db.Integer , db.ForeignKey("train.id"))
+    train_name = db.Column(db.String(30))
+    user_name = db.Column(db.String(30))
+    passenger_name = db.Column(db.String(30))
+    passenger_age = db.Column(db.String(30))
+    
+    def __init__(self, train_id,train_name,train_class,ticket_type,user_name,passenger_name,passenger_age):
+        self.train_id = train_id
+        self.train_name = train_name
+        self.train_class = train_class
+        self.ticket_type = ticket_type
+        self.user_name = user_name
+        self.passenger_name = passenger_name
+        self.passenger_age = passenger_age
+        
+    
